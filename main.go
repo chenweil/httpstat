@@ -359,14 +359,17 @@ func visit(url *url.URL) {
 		// 输出json格式化数据
 		switch url.Scheme {
 		case "https":
-			fmt.Println("{" + fmt.Sprintf(`"dns_lookup": %s,"tcp_connection": %s,"tls_handshake": %s,"server_processing": %s,"content_transfer": %s,"namelookup": "%s","connect": "%s","pretransfer": "%s","starttransfer": "%s","total": "%s","connection_protocol": "%s"`,
+			// 计算 tcp_connection + tls_handshake
+			tcpTLS := t2.Sub(t1) + t6.Sub(t5)
+			fmt.Println("{" + fmt.Sprintf(`"dns_lookup": %s,"tcp_connection": %s,"tls_handshake": %s,"server_processing": %s,"content_transfer": %s,"namelookup": "%s","connect": "%s","pretransfer": "%s","starttransfer": "%s","total": "%s","connection_protocol": "%s","connection_time": "%s"`,
 				fmtc(t1.Sub(t0)), fmtc(t2.Sub(t1)), fmtc(t6.Sub(t5)), fmtc(t4.Sub(t3)), fmtc(t7.Sub(t4)),
-				fmtd(t1.Sub(t0)), fmtd(t2.Sub(t0)), fmtd(t3.Sub(t0)), fmtd(t4.Sub(t0)), fmtd(t7.Sub(t0)), color.CyanString(connectedVia)) + "}")
+				fmtd(t1.Sub(t0)), fmtd(t2.Sub(t0)), fmtd(t3.Sub(t0)), fmtd(t4.Sub(t0)), fmtd(t7.Sub(t0)), color.CyanString(connectedVia), fmtc(tcpTLS)) + "}")
 			return
 		case "http":
-			fmt.Println("{" + fmt.Sprintf(`"dns_lookup": %s,"tcp_connection": %s,"server_processing": %s,"content_transfer": %s,"namelookup": %s,"connect": %s,"starttransfer": %s,"total": %s`,
+			// 计算连接时间
+			fmt.Println("{" + fmt.Sprintf(`"dns_lookup": %s,"tcp_connection": %s,"server_processing": %s,"content_transfer": %s,"namelookup": %s,"connect": %s,"starttransfer": %s,"total": %s,"connection_time": "%s"`,
 				fmtc(t1.Sub(t0)), fmtc(t3.Sub(t1)), fmtc(t4.Sub(t3)), fmtc(t7.Sub(t4)), fmtd(t1.Sub(t0)),
-				fmtd(t3.Sub(t0)), fmtd(t4.Sub(t0)), fmtd(t7.Sub(t0))) + "}")
+				fmtd(t3.Sub(t0)), fmtd(t4.Sub(t0)), fmtd(t7.Sub(t0)), fmtc(t3.Sub(t1))) + "}")
 			return
 		}
 	}
