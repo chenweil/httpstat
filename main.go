@@ -59,6 +59,7 @@ var (
 	clientCertFile  string
 	fourOnly        bool
 	sixOnly         bool
+	formatJson      bool
 
 	// number of redirects followed
 	redirectsFollowed int
@@ -81,6 +82,7 @@ func init() {
 	flag.StringVar(&clientCertFile, "E", "", "client cert file for tls config")
 	flag.BoolVar(&fourOnly, "4", false, "resolve IPv4 addresses only")
 	flag.BoolVar(&sixOnly, "6", false, "resolve IPv6 addresses only")
+	flag.BoolVar(&formatJson, "F", false, "output in json format")
 
 	flag.Usage = usage
 }
@@ -133,7 +135,6 @@ func main() {
 	}
 
 	url := parseURL(args[0])
-
 	visit(url)
 }
 
@@ -234,8 +235,9 @@ func visit(url *url.URL) {
 				log.Fatalf("unable to connect to host %v: %v", addr, err)
 			}
 			t2 = time.Now()
-
-			printf("\n%s%s\n", color.GreenString("Connected to "), color.CyanString(addr))
+			if !formatJson {
+				printf("\n%s%s\n", color.GreenString("Connected to "), color.CyanString(addr))
+			}
 		},
 		GotConn:              func(_ httptrace.GotConnInfo) { t3 = time.Now() },
 		GotFirstResponseByte: func() { t4 = time.Now() },
@@ -299,8 +301,9 @@ func visit(url *url.URL) {
 			connectedVia = "TLSv1.3"
 		}
 	}
-	printf("\n%s %s\n", color.GreenString("Connected via"), color.CyanString("%s", connectedVia))
-
+	if !formatJson {
+		printf("\n%s %s\n", color.GreenString("Connected via"), color.CyanString("%s", connectedVia))
+	}
 	bodyMsg := readResponseBody(req, resp)
 	resp.Body.Close()
 
@@ -311,18 +314,21 @@ func visit(url *url.URL) {
 	}
 
 	// print status line and headers
-	printf("\n%s%s%s\n", color.GreenString("HTTP"), grayscale(14)("/"), color.CyanString("%d.%d %s", resp.ProtoMajor, resp.ProtoMinor, resp.Status))
-
+	if !formatJson {
+		printf("\n%s%s%s\n", color.GreenString("HTTP"), grayscale(14)("/"), color.CyanString("%d.%d %s", resp.ProtoMajor, resp.ProtoMinor, resp.Status))
+	}
 	names := make([]string, 0, len(resp.Header))
 	for k := range resp.Header {
 		names = append(names, k)
 	}
 	sort.Sort(headers(names))
 	for _, k := range names {
-		printf("%s %s\n", grayscale(14)(k+":"), color.CyanString(strings.Join(resp.Header[k], ",")))
+		if !formatJson {
+			printf("%s %s\n", grayscale(14)(k+":"), color.CyanString(strings.Join(resp.Header[k], ",")))
+		}
 	}
 
-	if bodyMsg != "" {
+	if bodyMsg != "" && !formatJson {
 		printf("\n%s\n", bodyMsg)
 	}
 
@@ -334,14 +340,38 @@ func visit(url *url.URL) {
 		return color.CyanString("%-9s", strconv.Itoa(int(d/time.Millisecond))+"ms")
 	}
 
+	fmtc := func(d time.Duration) string {
+		// 将d转换成2位小数的字符串 时间毫秒
+		return color.CyanString("%d", int(d/time.Millisecond))
+	}
+
+	fmtd := func(d time.Duration) string {
+		return color.CyanString("%s", strconv.Itoa(int(d/time.Millisecond)))
+	}
+
 	colorize := func(s string) string {
 		v := strings.Split(s, "\n")
 		v[0] = grayscale(16)(v[0])
 		return strings.Join(v, "\n")
 	}
 
-	fmt.Println()
+	if formatJson {
+		// 输出json格式化数据
+		switch url.Scheme {
+		case "https":
+			fmt.Println("{" + fmt.Sprintf(`"dns_lookup": %s,"tcp_connection": %s,"tls_handshake": %s,"server_processing": %s,"content_transfer": %s,"namelookup": "%s","connect": "%s","pretransfer": "%s","starttransfer": "%s","total": "%s","connection_protocol": "%s"`,
+				fmtc(t1.Sub(t0)), fmtc(t2.Sub(t1)), fmtc(t6.Sub(t5)), fmtc(t4.Sub(t3)), fmtc(t7.Sub(t4)),
+				fmtd(t1.Sub(t0)), fmtd(t2.Sub(t0)), fmtd(t3.Sub(t0)), fmtd(t4.Sub(t0)), fmtd(t7.Sub(t0)), color.CyanString(connectedVia)) + "}")
+			return
+		case "http":
+			fmt.Println("{" + fmt.Sprintf(`"dns_lookup": %s,"tcp_connection": %s,"server_processing": %s,"content_transfer": %s,"namelookup": %s,"connect": %s,"starttransfer": %s,"total": %s`,
+				fmtc(t1.Sub(t0)), fmtc(t3.Sub(t1)), fmtc(t4.Sub(t3)), fmtc(t7.Sub(t4)), fmtd(t1.Sub(t0)),
+				fmtd(t3.Sub(t0)), fmtd(t4.Sub(t0)), fmtd(t7.Sub(t0))) + "}")
+			return
+		}
+	}
 
+	fmt.Println()
 	switch url.Scheme {
 	case "https":
 		printf(colorize(httpsTemplate),
