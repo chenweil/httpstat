@@ -29,6 +29,36 @@ $ httpstat https://example.com/
 - HTTP/HTTPS proxies supported via the usual `HTTP_PROXY`/`HTTPS_PROXY` env vars (as well as lower case variants).
 - Supply your own client side certificate with `-E cert.pem`.
 
+## New Feature: JSON Output
+
+I've made some modifications to this project to allow output in JSON format. You can use the `-F` flag to get results in JSON format. Here's an example command and output:
+
+Command:
+
+`httpstat -F https://example.com`
+
+Output:
+
+```json
+{
+ "dns_lookup": 0,
+ "tcp_connection": 0,
+ "tls_handshake": 764,
+ "server_processing": 260,
+ "content_transfer": 0,
+ "namelookup": "0",
+ "connect": "0",
+ "pretransfer": "767",
+ "starttransfer": "1028",
+ "total": "1029",
+ "connection_protocol": "TLSv1.3",
+ "connection_time": "764"
+}
+```
+
+This result can now be directly used for data storage, analysis or other purposes.
+
+
 ## Contributing
 
 Bug reports are most welcome, but with the exception of #5, this project is closed.
