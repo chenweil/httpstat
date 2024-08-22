@@ -374,7 +374,6 @@ func visit(url *url.URL) {
 		}
 	}
 
-	fmt.Println()
 	switch url.Scheme {
 	case "https":
 		printf(colorize(httpsTemplate),
